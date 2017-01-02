@@ -402,8 +402,7 @@ void MWWorld::InventoryStore::autoEquip (const MWWorld::Ptr& actor)
             std::pair<std::vector<int>, bool> itemsSlots =
                 weapon->getClass().getEquipmentSlots (*weapon);
 
-            for (std::vector<int>::const_iterator slot (itemsSlots.first.begin());
-                slot!=itemsSlots.first.end(); ++slot)
+            if (!itemsSlots.first.empty())
             {
                 if (!itemsSlots.second)
                 {
@@ -413,8 +412,8 @@ void MWWorld::InventoryStore::autoEquip (const MWWorld::Ptr& actor)
                     }
                 }
 
-                slots_[*slot] = weapon;
-                break;
+                int slot = itemsSlots.first.front();
+                slots_[slot] = weapon;
             }
 
             break;
@@ -515,8 +514,8 @@ void MWWorld::InventoryStore::updateMagicEffects(const Ptr& actor)
                     MWBase::Environment::get().getWorld()->getStore().get<ESM::MagicEffect>().find (
                     effectIt->mEffectID);
 
-                // Fully resisted?
-                if (params[i].mMultiplier == 0)
+                // Fully resisted or can't be applied to target?
+                if (params[i].mMultiplier == 0 || !MWMechanics::checkEffectTarget(effectIt->mEffectID, actor, actor, actor == MWMechanics::getPlayer()))
                     continue;
 
                 float magnitude = effectIt->mMagnMin + (effectIt->mMagnMax - effectIt->mMagnMin) * params[i].mRandom;
@@ -770,6 +769,9 @@ void MWWorld::InventoryStore::visitEffectSources(MWMechanics::EffectSourceVisito
         for (std::vector<ESM::ENAMstruct>::const_iterator effectIt (enchantment.mEffects.mList.begin());
             effectIt!=enchantment.mEffects.mList.end(); ++effectIt)
         {
+            // Don't get spell icon display information for enchantments that weren't actually applied
+            if (mMagicEffects.get(MWMechanics::EffectKey(*effectIt)).getMagnitude() == 0)
+                continue;
             const EffectParams& params = mPermanentMagicEffectMagnitudes[(**iter).getCellRef().getRefId()][i];
             float magnitude = effectIt->mMagnMin + (effectIt->mMagnMax - effectIt->mMagnMin) * params.mRandom;
             magnitude *= params.mMultiplier;
